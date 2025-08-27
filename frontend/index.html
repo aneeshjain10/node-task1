@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>User Form</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input { width: 100%; padding: 8px; margin: 6px 0; box-sizing: border-box; }
+    button { padding: 10px 16px; }
+    .msg { margin: 10px 0; color: green; }
+    .err { color: red; }
+  </style>
+</head>
+<body>
+  <h2>User Registration</h2>
+  <form id="userForm">
+    <input name="firstName" placeholder="First Name" required />
+    <input name="lastName" placeholder="Last Name" required />
+    <input name="mobileNo" placeholder="Mobile No (10 digits)" required />
+    <input name="emailId" type="email" placeholder="Email" required />
+    <input name="street" placeholder="Street" />
+    <input name="city" placeholder="City" />
+    <input name="state" placeholder="State" />
+    <input name="country" placeholder="Country" />
+    <input name="loginId" placeholder="Login ID (8 chars)" required />
+    <input name="password" type="password" placeholder="Password" required />
+    <button type="submit">Save</button>
+  </form>
+
+  <div id="response" class="msg"></div>
+
+  <h3>Registered Users</h3>
+  <div id="userList"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000';
+
+    function showMessage(text, isError) {
+      const el = $('#response');
+      el.text(text).toggleClass('err', !!isError);
+      setTimeout(() => el.text(''), 4000);
+    }
+
+    $('#userForm').on('submit', function(e) {
+      e.preventDefault();
+      const formData = {
+        firstName: $('[name=firstName]').val(),
+        lastName: $('[name=lastName]').val(),
+        mobileNo: $('[name=mobileNo]').val(),
+        emailId: $('[name=emailId]').val(),
+        address: {
+          street: $('[name=street]').val(),
+          city: $('[name=city]').val(),
+          state: $('[name=state]').val(),
+          country: $('[name=country]').val()
+        },
+        loginId: $('[name=loginId]').val(),
+        password: $('[name=password]').val()
+      };
+
+      $.ajax({
+        url: API_BASE + '/api/register',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success(res) {
+          showMessage(res.message, false);
+          $('#userForm')[0].reset();
+          loadUsers();
+        },
+        error(xhr) {
+          const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Server error';
+          showMessage('Error: ' + msg, true);
+        }
+      });
+    });
+
+    function loadUsers() {
+      $.get(API_BASE + '/api/users', function(data) {
+        if (!Array.isArray(data) || data.length === 0) {
+          $('#userList').html('<p>No users yet</p>');
+          return;
+        }
+        let html = '<ul>';
+        data.forEach(u => {
+          html += `<li>${u.firstName} ${u.lastName} — ${u.emailId} — ${u.address?.city || ''}</li>`;
+        });
+        html += '</ul>';
+        $('#userList').html(html);
+      }).fail(() => $('#userList').html('<p class="err">Failed to load users</p>'));
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>
