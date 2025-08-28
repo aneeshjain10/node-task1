@@ -1,144 +1,108 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8" />
-  <title>User Registration & List</title>
+  <title>User Registration & Live Users</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-    input { width: 100%; padding: 8px; margin: 6px 0; box-sizing: border-box; }
-    button { padding: 10px 16px; margin-top: 10px; }
-    .msg { margin: 10px 0; color: green; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 700px; margin: auto; background: #f9f9f9; }
+    input { width: 100%; padding: 8px; margin: 6px 0; border-radius: 4px; border: 1px solid #ccc; }
+    button { padding: 10px 16px; border: none; background: #4CAF50; color: white; border-radius: 4px; cursor: pointer; transition: 0.3s; }
+    button:hover { background: #45a049; transform: scale(1.05); }
+    .msg { margin: 10px 0; color: green; font-weight: bold; transition: 0.5s; }
     .err { color: red; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-    th { background-color: #4CAF50; color: white; }
+    ul { list-style: none; padding: 0; margin-top: 20px; }
+    li { padding: 10px; margin-bottom: 6px; cursor: pointer; border-radius: 5px; background: #e3f2fd; color: #0d47a1; transition: 0.3s; }
+    li:hover { background: #0d47a1; color: white; transform: translateX(5px); }
+    h2, h3 { color: #0d47a1; text-align: center; }
   </style>
 </head>
 <body>
-  <h2>User Registration</h2>
-  <form id="userForm">
-    <input name="firstName" placeholder="First Name" required />
-    <input name="lastName" placeholder="Last Name" required />
-    <input name="mobileNo" placeholder="Mobile No (10 digits)" required />
-    <input name="emailId" type="email" placeholder="Email" required />
-    <input name="street" placeholder="Street" />
-    <input name="city" placeholder="City" />
-    <input name="state" placeholder="State" />
-    <input name="country" placeholder="Country" />
-    <input name="loginId" placeholder="Login ID (8 chars)" required />
-    <input name="password" type="password" placeholder="Password" required />
-    <button type="submit">Save</button>
-  </form>
 
-  <div id="response" class="msg"></div>
+<h2>User Registration</h2>
+<form id="userForm">
+  <input name="firstName" placeholder="First Name" required />
+  <input name="lastName" placeholder="Last Name" required />
+  <input name="mobileNo" placeholder="Mobile No (10 digits)" required />
+  <input name="emailId" type="email" placeholder="Email" required />
+  <input name="street" placeholder="Street" />
+  <input name="city" placeholder="City" />
+  <input name="state" placeholder="State" />
+  <input name="country" placeholder="Country" />
+  <input name="loginId" placeholder="Login ID (8 chars)" required />
+  <input name="password" type="password" placeholder="Password" required />
+  <button type="submit">Save</button>
+</form>
 
-  <h2>Registered Users</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>First Name</th>
-        <th>Last Name</th>
-        <th>Mobile</th>
-        <th>Email</th>
-        <th>Street</th>
-        <th>City</th>
-        <th>State</th>
-        <th>Country</th>
-        <th>Login ID</th>
-        <th>Created At</th>
-        <th>Updated At</th>
-      </tr>
-    </thead>
-    <tbody id="usersTableBody">
-      <!-- Data yaha inject hoga -->
-    </tbody>
-  </table>
+<div id="response" class="msg"></div>
 
-  <script>
-    const API_BASE = 'https://node-task1-agkh.onrender.com';
+<h3>Live Users</h3>
+<ul id="liveUsers"></ul>
 
-    function showMessage(text, isError) {
-      const el = $('#response');
-      el.text(text).toggleClass('err', !!isError);
-      setTimeout(() => el.text(''), 4000);
+<script>
+const API_BASE = 'http://localhost:3000'; // ya render/live backend URL
+const socket = io(API_BASE);
+
+// Message display
+function showMessage(text, isError) {
+  const el = $('#response');
+  el.text(text).toggleClass('err', !!isError).css('opacity', 1).animate({opacity: 0}, 4000);
+}
+
+// Registration form submit
+$('#userForm').on('submit', function(e){
+  e.preventDefault();
+  const formData = {
+    firstName: $('[name=firstName]').val(),
+    lastName: $('[name=lastName]').val(),
+    mobileNo: $('[name=mobileNo]').val(),
+    emailId: $('[name=emailId]').val(),
+    address: {
+      street: $('[name=street]').val(),
+      city: $('[name=city]').val(),
+      state: $('[name=state]').val(),
+      country: $('[name=country]').val()
+    },
+    loginId: $('[name=loginId]').val(),
+    password: $('[name=password]').val()
+  };
+
+  $.ajax({
+    url: API_BASE + '/api/register',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(formData),
+    success(res){
+      showMessage(res.message, false);
+      $('#userForm')[0].reset();
+      socket.emit('joinRoom', res.userId); // join live_users
+    },
+    error(xhr){
+      const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Server error';
+      showMessage('Error: '+msg, true);
     }
+  });
+});
 
-    // Form submit
-    $('#userForm').on('submit', function(e) {
-      e.preventDefault();
-      const formData = {
-        firstName: $('[name=firstName]').val(),
-        lastName: $('[name=lastName]').val(),
-        mobileNo: $('[name=mobileNo]').val(),
-        emailId: $('[name=emailId]').val(),
-        address: {
-          street: $('[name=street]').val(),
-          city: $('[name=city]').val(),
-          state: $('[name=state]').val(),
-          country: $('[name=country]').val()
-        },
-        loginId: $('[name=loginId]').val(),
-        password: $('[name=password]').val()
-      };
-
-      $.ajax({
-        url: API_BASE + '/api/register',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify(formData),
-        success(res) {
-          showMessage(res.message, false);
-          $('#userForm')[0].reset();
-          loadUsers();
-        },
-        error(xhr) {
-          const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Server error';
-          showMessage('Error: ' + msg, true);
-        }
-      });
-    });
-
-    // Load users
-    async function loadUsers() {
+// Live users update
+socket.on('liveUsers', (users) => {
+  const ul = $('#liveUsers');
+  ul.empty();
+  users.forEach(u => {
+    const li = $(`<li>${u.email} — ${u.socketId}</li>`);
+    li.on('click', async () => {
       try {
-        const response = await fetch(API_BASE + '/api/users');
-        const users = await response.json();
-        const tableBody = document.getElementById('usersTableBody');
-        tableBody.innerHTML = '';
-
-        if (!Array.isArray(users) || users.length === 0) {
-          tableBody.innerHTML = '<tr><td colspan="12">No users yet</td></tr>';
-          return;
-        }
-
-        users.forEach((u, i) => {
-          tableBody.innerHTML += `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${u.firstName || ''}</td>
-              <td>${u.lastName || ''}</td>
-              <td>${u.mobileNo || ''}</td>
-              <td>${u.emailId || ''}</td>
-              <td>${u.address?.street || ''}</td>
-              <td>${u.address?.city || ''}</td>
-              <td>${u.address?.state || ''}</td>
-              <td>${u.address?.country || ''}</td>
-              <td>${u.loginId || ''}</td>
-              <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
-              <td>${u.updatedAt ? new Date(u.updatedAt).toLocaleString() : ''}</td>
-            </tr>
-          `;
-        });
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="12" class="err">Failed to load users</td></tr>';
+        const res = await fetch(`${API_BASE}/api/users/${u.email}`);
+        const data = await res.json();
+        alert(JSON.stringify(data, null, 2));
+      } catch(err){
+        alert('Error fetching user info');
       }
-    }
-
-    // Load users on page load
-    loadUsers();
-  </script>
+    });
+    ul.append(li);
+  });
+});
+</script>
 </body>
 </html>
