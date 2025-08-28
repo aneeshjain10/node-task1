@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const User = require('./models/User'); // make sure path is correct
@@ -13,6 +14,14 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ✅ Root route (health check)
+app.get("/", (req, res) => {
+  res.send("✅ Backend is running on Render!");
+});
+
+// (Optional) Serve frontend if needed
+// app.use(express.static(path.join(__dirname, "../frontend")));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -32,19 +41,23 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('joinRoom', async (userId) => {
-    const user = await User.findById(userId);
-    if (!user) return;
+    try {
+      const user = await User.findById(userId);
+      if (!user) return;
 
-    socket.join('live_users');
+      socket.join('live_users');
 
-    // Add to live users
-    liveUsers.push({
-      socketId: socket.id,
-      email: user.emailId,
-      name: user.firstName + ' ' + user.lastName
-    });
+      // Add to live users
+      liveUsers.push({
+        socketId: socket.id,
+        email: user.emailId,
+        name: user.firstName + ' ' + user.lastName
+      });
 
-    io.to('live_users').emit('liveUsers', liveUsers);
+      io.to('live_users').emit('liveUsers', liveUsers);
+    } catch (err) {
+      console.error("Error in joinRoom:", err.message);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -53,7 +66,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Register API
+// ✅ Register API
 app.post('/api/register', async (req, res) => {
   try {
     const newUser = new User(req.body);
@@ -66,7 +79,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Read all users
+// ✅ Read all users
 app.get('/api/users', async (req, res) => {
   try {
     const users = await User.find().select('-password');
@@ -76,7 +89,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Get user by email
+// ✅ Get user by email
 app.get('/api/users/:email', async (req, res) => {
   try {
     const user = await User.findOne({ emailId: req.params.email }).select('-password');
