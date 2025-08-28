@@ -1,15 +1,18 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>User Form</title>
+  <title>User Registration & List</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
     input { width: 100%; padding: 8px; margin: 6px 0; box-sizing: border-box; }
-    button { padding: 10px 16px; }
+    button { padding: 10px 16px; margin-top: 10px; }
     .msg { margin: 10px 0; color: green; }
     .err { color: red; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #4CAF50; color: white; }
   </style>
 </head>
 <body>
@@ -30,21 +33,39 @@
 
   <div id="response" class="msg"></div>
 
-  <h3>Registered Users</h3>
-  <div id="userList"></div>
+  <h2>Registered Users</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Mobile</th>
+        <th>Email</th>
+        <th>Street</th>
+        <th>City</th>
+        <th>State</th>
+        <th>Country</th>
+        <th>Login ID</th>
+        <th>Created At</th>
+        <th>Updated At</th>
+      </tr>
+    </thead>
+    <tbody id="usersTableBody">
+      <!-- Data yaha inject hoga -->
+    </tbody>
+  </table>
 
   <script>
     const API_BASE = 'https://node-task1-agkh.onrender.com';
 
-
     function showMessage(text, isError) {
-
-        
       const el = $('#response');
       el.text(text).toggleClass('err', !!isError);
       setTimeout(() => el.text(''), 4000);
     }
 
+    // Form submit
     $('#userForm').on('submit', function(e) {
       e.preventDefault();
       const formData = {
@@ -79,21 +100,44 @@
       });
     });
 
-    function loadUsers() {
-      $.get(API_BASE + '/api/users', function(data) {
-        if (!Array.isArray(data) || data.length === 0) {
-          $('#userList').html('<p>No users yet</p>');
+    // Load users
+    async function loadUsers() {
+      try {
+        const response = await fetch(API_BASE + '/api/users');
+        const users = await response.json();
+        const tableBody = document.getElementById('usersTableBody');
+        tableBody.innerHTML = '';
+
+        if (!Array.isArray(users) || users.length === 0) {
+          tableBody.innerHTML = '<tr><td colspan="12">No users yet</td></tr>';
           return;
         }
-        let html = '<ul>';
-        data.forEach(u => {
-          html += `<li>${u.firstName} ${u.lastName} — ${u.emailId} — ${u.address?.city || ''}</li>`;
+
+        users.forEach((u, i) => {
+          tableBody.innerHTML += `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${u.firstName || ''}</td>
+              <td>${u.lastName || ''}</td>
+              <td>${u.mobileNo || ''}</td>
+              <td>${u.emailId || ''}</td>
+              <td>${u.address?.street || ''}</td>
+              <td>${u.address?.city || ''}</td>
+              <td>${u.address?.state || ''}</td>
+              <td>${u.address?.country || ''}</td>
+              <td>${u.loginId || ''}</td>
+              <td>${u.createdAt ? new Date(u.createdAt).toLocaleString() : ''}</td>
+              <td>${u.updatedAt ? new Date(u.updatedAt).toLocaleString() : ''}</td>
+            </tr>
+          `;
         });
-        html += '</ul>';
-        $('#userList').html(html);
-      }).fail(() => $('#userList').html('<p class="err">Failed to load users</p>'));
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="12" class="err">Failed to load users</td></tr>';
+      }
     }
 
+    // Load users on page load
     loadUsers();
   </script>
 </body>
