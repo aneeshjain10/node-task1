@@ -6,16 +6,120 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 700px; margin: auto; background: #f9f9f9; }
-    input { width: 100%; padding: 8px; margin: 6px 0; border-radius: 4px; border: 1px solid #ccc; }
-    button { padding: 10px 16px; border: none; background: #4CAF50; color: white; border-radius: 4px; cursor: pointer; transition: 0.3s; }
-    button:hover { background: #45a049; transform: scale(1.05); }
-    .msg { margin: 10px 0; color: green; font-weight: bold; transition: 0.5s; }
-    .err { color: red; }
-    ul { list-style: none; padding: 0; margin-top: 20px; }
-    li { padding: 10px; margin-bottom: 6px; cursor: pointer; border-radius: 5px; background: #e3f2fd; color: #0d47a1; transition: 0.3s; }
-    li:hover { background: #0d47a1; color: white; transform: translateX(5px); }
-    h2, h3 { color: #0d47a1; text-align: center; }
+    /* Body gradient & animation */
+    body {
+      font-family: 'Arial', sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+      background: linear-gradient(135deg, #89f7fe, #66a6ff, #fbc2eb, #a18cd1);
+      background-size: 400% 400%;
+      animation: gradientBG 20s ease infinite;
+      color: #0d47a1;
+      transition: all 0.3s;
+    }
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h2, h3 {
+      color: #0d47a1;
+      text-align: center;
+      text-shadow: 1px 1px 5px rgba(0,0,0,0.2);
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+      transition: 0.3s;
+    }
+    input:focus {
+      border-color: #4CAF50;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      background: #4CAF50;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    button:hover {
+      background: #45a049;
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.25);
+    }
+
+    .msg {
+      margin: 12px 0;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    }
+    .err { color: #ff3333; }
+
+    table {
+      margin-top: 20px;
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:hover {
+      background: #0d47a1;
+      color: white;
+      transition: 0.3s;
+      cursor: pointer;
+    }
+
+    th {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Modal styles */
+    #userModal {
+      display:none; 
+      position:fixed; 
+      top:0; left:0; 
+      width:100%; height:100%; 
+      background: rgba(0,0,0,0.6); 
+      justify-content:center; align-items:center; 
+      z-index:1000;
+    }
+    #userModal .modalContent {
+      background:white; 
+      padding:20px; 
+      border-radius:8px; 
+      max-width:500px; 
+      width:90%; 
+      position:relative;
+    }
+    #userModal #closeModal {
+      position:absolute; top:10px; right:15px; 
+      cursor:pointer; font-weight:bold; font-size:18px;
+    }
+    #modalTable th, #modalTable td {
+      padding:8px; border-bottom:1px solid #ddd;
+    }
   </style>
 </head>
 <body>
@@ -38,19 +142,39 @@
 <div id="response" class="msg"></div>
 
 <h3>Live Users</h3>
-<ul id="liveUsers"></ul>
+<table id="liveUsersTable">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Socket ID</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- Modal for user details -->
+<div id="userModal">
+  <div class="modalContent">
+    <span id="closeModal">&times;</span>
+    <h3>User Details</h3>
+    <table id="modalTable">
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
 
 <script>
-const API_BASE = 'http://localhost:3000'; // ya render/live backend URL
-const socket = io(API_BASE);
+const API_BASE = 'http://localhost:3000'; // Change to deployed backend URL when ready
+const socket = io(API_BASE, { transports: ["websocket"] });
 
-// Message display
+// Show messages
 function showMessage(text, isError) {
   const el = $('#response');
   el.text(text).toggleClass('err', !!isError).css('opacity', 1).animate({opacity: 0}, 4000);
 }
 
-// Registration form submit
+// Form submission
 $('#userForm').on('submit', function(e){
   e.preventDefault();
   const formData = {
@@ -74,9 +198,9 @@ $('#userForm').on('submit', function(e){
     contentType: 'application/json',
     data: JSON.stringify(formData),
     success(res){
-      showMessage(res.message, false);
+      showMessage('User saved successfully!', false);
       $('#userForm')[0].reset();
-      socket.emit('joinRoom', res.userId); // join live_users
+      socket.emit('joinLive', { email: formData.emailId, name: formData.firstName });
     },
     error(xhr){
       const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Server error';
@@ -85,24 +209,51 @@ $('#userForm').on('submit', function(e){
   });
 });
 
-// Live users update
-socket.on('liveUsers', (users) => {
-  const ul = $('#liveUsers');
-  ul.empty();
+// Listen for live users update
+socket.on('updateUsers', (users) => {
+  const tbody = $('#liveUsersTable tbody');
+  tbody.empty();
   users.forEach(u => {
-    const li = $(`<li>${u.email} — ${u.socketId}</li>`);
-    li.on('click', async () => {
+    const row = $(`
+      <tr>
+        <td>${u.name}</td>
+        <td>${u.email}</td>
+        <td>${u.socketId}</td>
+      </tr>
+    `);
+
+    row.on('click', async () => {
       try {
         const res = await fetch(`${API_BASE}/api/users/${u.email}`);
         const data = await res.json();
-        alert(JSON.stringify(data, null, 2));
+
+        // Populate modal table
+        const modalBody = $('#modalTable tbody');
+        modalBody.empty();
+        for (const key in data) {
+          if (key === 'address') {
+            for (const aKey in data.address) {
+              modalBody.append(`<tr><td><b>${aKey}</b></td><td>${data.address[aKey]}</td></tr>`);
+            }
+          } else if(key === '__v') continue;
+          else {
+            modalBody.append(`<tr><td><b>${key}</b></td><td>${data[key]}</td></tr>`);
+          }
+        }
+
+        $('#userModal').fadeIn();
       } catch(err){
         alert('Error fetching user info');
       }
     });
-    ul.append(li);
+
+    tbody.append(row);
   });
 });
+
+// Modal close
+$('#closeModal').on('click', () => $('#userModal').fadeOut());
+$('#userModal').on('click', (e) => { if(e.target.id === 'userModal') $('#userModal').fadeOut(); });
 </script>
 </body>
 </html>
