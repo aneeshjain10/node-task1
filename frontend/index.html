@@ -1,259 +1,254 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>User Registration & Live Users</title>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>User Registration - Live</title>
+
+  <!-- Tailwind CDN for quick pro UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- animate.css for subtle animations -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <!-- socket.io client -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
   <style>
-    /* Body gradient & animation */
-    body {
-      font-family: 'Arial', sans-serif;
-      padding: 20px;
-      max-width: 800px;
-      margin: auto;
-      background: linear-gradient(135deg, #89f7fe, #66a6ff, #fbc2eb, #a18cd1);
-      background-size: 400% 400%;
-      animation: gradientBG 20s ease infinite;
-      color: #0d47a1;
-      transition: all 0.3s;
-    }
-    @keyframes gradientBG {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    h2, h3 {
-      color: #0d47a1;
-      text-align: center;
-      text-shadow: 1px 1px 5px rgba(0,0,0,0.2);
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 6px 0;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-      transition: 0.3s;
-    }
-    input:focus {
-      border-color: #4CAF50;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-    }
-
-    button {
-      padding: 12px 18px;
-      border: none;
-      background: #4CAF50;
-      color: white;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    button:hover {
-      background: #45a049;
-      transform: scale(1.05);
-      box-shadow: 0 6px 15px rgba(0,0,0,0.25);
-    }
-
-    .msg {
-      margin: 12px 0;
-      font-weight: bold;
-      color: #fff;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
-    }
-    .err { color: #ff3333; }
-
-    table {
-      margin-top: 20px;
-      width: 100%;
-      border-collapse: collapse;
-      border-radius: 8px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.2);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-
-    th, td {
-      padding: 10px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-    }
-
-    tr:hover {
-      background: #0d47a1;
-      color: white;
-      transition: 0.3s;
-      cursor: pointer;
-    }
-
-    th {
-      background: rgba(255,255,255,0.3);
-    }
-
-    /* Modal styles */
-    #userModal {
-      display:none; 
-      position:fixed; 
-      top:0; left:0; 
-      width:100%; height:100%; 
-      background: rgba(0,0,0,0.6); 
-      justify-content:center; align-items:center; 
-      z-index:1000;
-    }
-    #userModal .modalContent {
-      background:white; 
-      padding:20px; 
-      border-radius:8px; 
-      max-width:500px; 
-      width:90%; 
-      position:relative;
-    }
-    #userModal #closeModal {
-      position:absolute; top:10px; right:15px; 
-      cursor:pointer; font-weight:bold; font-size:18px;
-    }
-    #modalTable th, #modalTable td {
-      padding:8px; border-bottom:1px solid #ddd;
-    }
+    body { background: linear-gradient(135deg,#f6d365 0%,#fda085 100%); min-height:100vh; }
+    .glass { background: rgba(255,255,255,0.8); backdrop-filter: blur(6px); box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
+    .fade-in { animation: fadeInUp .6s both; }
   </style>
 </head>
-<body>
+<body class="flex items-center justify-center p-6">
+  <div class="w-full max-w-3xl space-y-6">
+    <header class="text-center">
+      <h1 class="text-4xl font-extrabold text-gray-800 mb-2 animate__animated animate__fadeInDown">User Registration & Live Users</h1>
+      <p class="text-gray-700">Task 1 + Task 2 — Node.js, MongoDB & Socket.io</p>
+    </header>
 
-<h2>User Registration</h2>
-<form id="userForm">
-  <input name="firstName" placeholder="First Name" required />
-  <input name="lastName" placeholder="Last Name" required />
-  <input name="mobileNo" placeholder="Mobile No (10 digits)" required />
-  <input name="emailId" type="email" placeholder="Email" required />
-  <input name="street" placeholder="Street" />
-  <input name="city" placeholder="City" />
-  <input name="state" placeholder="State" />
-  <input name="country" placeholder="Country" />
-  <input name="loginId" placeholder="Login ID (8 chars)" required />
-  <input name="password" type="password" placeholder="Password" required />
-  <button type="submit">Save</button>
-</form>
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Form card -->
+      <section class="glass p-6 rounded-2xl fade-in">
+        <h2 class="text-2xl font-semibold mb-4">Register New User</h2>
+        <form id="userForm" class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <input id="firstName" class="p-3 rounded-lg border" placeholder="First name" required />
+            <input id="lastName" class="p-3 rounded-lg border" placeholder="Last name" required />
+            <input id="mobileNo" class="p-3 rounded-lg border" placeholder="Mobile (10 digits)" required />
+            <input id="emailId" type="email" class="p-3 rounded-lg border" placeholder="Email" required />
+            <input id="loginId" class="p-3 rounded-lg border" placeholder="Login ID (8 chars)" required />
+            <input id="password" type="password" class="p-3 rounded-lg border" placeholder="Password" required />
+          </div>
 
-<div id="response" class="msg"></div>
+          <div class="space-y-2 mt-2">
+            <input id="street" class="p-3 rounded-lg border" placeholder="Street" />
+            <div class="grid grid-cols-3 gap-3">
+              <input id="city" class="p-3 rounded-lg border" placeholder="City" />
+              <input id="state" class="p-3 rounded-lg border" placeholder="State" />
+              <input id="country" class="p-3 rounded-lg border" placeholder="Country" />
+            </div>
+          </div>
 
-<h3>Live Users</h3>
-<table id="liveUsersTable">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Socket ID</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+          <div class="flex items-center gap-3 mt-3">
+            <button id="saveBtn" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg shadow hover:scale-105 transition">Save</button>
+            <div id="msg" class="text-sm text-green-700"></div>
+          </div>
+        </form>
+      </section>
 
-<!-- Modal for user details -->
-<div id="userModal">
-  <div class="modalContent">
-    <span id="closeModal">&times;</span>
-    <h3>User Details</h3>
-    <table id="modalTable">
-      <tbody></tbody>
-    </table>
+      <!-- Live users panel -->
+      <section class="glass p-6 rounded-2xl fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-semibold">Live Users</h2>
+          <button id="refreshBtn" class="text-sm px-3 py-1 rounded bg-gray-100">Refresh</button>
+        </div>
+
+        <div id="usersContainer" class="space-y-3 max-h-[60vh] overflow-auto">
+          <!-- rows injected here -->
+        </div>
+      </section>
+    </main>
   </div>
-</div>
 
-<script>
-const API_BASE = 'http://localhost:3000'; // Change to deployed backend URL when ready
-const socket = io(API_BASE, { transports: ["websocket"] });
+  <template id="userRowTpl">
+    <div class="userRow flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-white to-indigo-50 hover:shadow-lg transition cursor-pointer">
+      <div>
+        <div class="font-semibold name"></div>
+        <div class="text-sm text-gray-600 email"></div>
+      </div>
+      <div class="text-xs text-gray-500 socketId"></div>
+    </div>
+  </template>
 
-// Show messages
-function showMessage(text, isError) {
-  const el = $('#response');
-  el.text(text).toggleClass('err', !!isError).css('opacity', 1).animate({opacity: 0}, 4000);
-}
+  <!-- Modal -->
+  <div id="modal" class="fixed inset-0 hidden items-center justify-center bg-black/40 z-50">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-xl">
+      <div class="flex justify-between items-start">
+        <h3 class="text-xl font-semibold">User Details</h3>
+        <button id="closeModal" class="text-gray-500">Close</button>
+      </div>
+      <div id="modalBody" class="mt-4 text-sm text-gray-700"></div>
+    </div>
+  </div>
 
-// Form submission
-$('#userForm').on('submit', function(e){
-  e.preventDefault();
-  const formData = {
-    firstName: $('[name=firstName]').val(),
-    lastName: $('[name=lastName]').val(),
-    mobileNo: $('[name=mobileNo]').val(),
-    emailId: $('[name=emailId]').val(),
-    address: {
-      street: $('[name=street]').val(),
-      city: $('[name=city]').val(),
-      state: $('[name=state]').val(),
-      country: $('[name=country]').val()
-    },
-    loginId: $('[name=loginId]').val(),
-    password: $('[name=password]').val()
-  };
-
-  $.ajax({
-    url: API_BASE + '/api/register',
-    method: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify(formData),
-    success(res){
-      showMessage('User saved successfully!', false);
-      $('#userForm')[0].reset();
-      socket.emit('joinLive', { email: formData.emailId, name: formData.firstName });
-    },
-    error(xhr){
-      const msg = xhr.responseJSON ? xhr.responseJSON.message : 'Server error';
-      showMessage('Error: '+msg, true);
-    }
-  });
-});
-
-// Listen for live users update
-socket.on('updateUsers', (users) => {
-  const tbody = $('#liveUsersTable tbody');
-  tbody.empty();
-  users.forEach(u => {
-    const row = $(`
-      <tr>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>${u.socketId}</td>
-      </tr>
-    `);
-
-    row.on('click', async () => {
+  <script>
+    // Load config then initialize
+    let CONFIG = {};
+    async function loadConfig() {
       try {
-        const res = await fetch(`${API_BASE}/api/users/${u.email}`);
-        const data = await res.json();
-
-        // Populate modal table
-        const modalBody = $('#modalTable tbody');
-        modalBody.empty();
-        for (const key in data) {
-          if (key === 'address') {
-            for (const aKey in data.address) {
-              modalBody.append(`<tr><td><b>${aKey}</b></td><td>${data.address[aKey]}</td></tr>`);
-            }
-          } else if(key === '__v') continue;
-          else {
-            modalBody.append(`<tr><td><b>${key}</b></td><td>${data[key]}</td></tr>`);
-          }
-        }
-
-        $('#userModal').fadeIn();
-      } catch(err){
-        alert('Error fetching user info');
+        const res = await fetch('env.json');
+        CONFIG = await res.json();
+      } catch (err) {
+        // fallback
+        CONFIG = { API_BASE_URL: window.location.hostname.includes('localhost') ? 'http://localhost:3000' : 'https://node-task1-9q5y.onrender.com' };
       }
-    });
+      init();
+    }
 
-    tbody.append(row);
-  });
-});
+    // Socket will be created after config is loaded
+    let socket;
+    function init() {
+      const API = CONFIG.API_BASE_URL.replace(/\/$/, '');
 
-// Modal close
-$('#closeModal').on('click', () => $('#userModal').fadeOut());
-$('#userModal').on('click', (e) => { if(e.target.id === 'userModal') $('#userModal').fadeOut(); });
-</script>
+      // Connect socket.io client
+      socket = io(API, { transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => {
+        console.log('Socket connected', socket.id);
+      });
+
+      // Update users list live
+      socket.on('updateUsers', (users) => {
+        renderUsers(users);
+      });
+
+      // Manual refresh
+      document.getElementById('refreshBtn').addEventListener('click', fetchUsers);
+
+      // Form submit
+      document.getElementById('userForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+          firstName: document.getElementById('firstName').value.trim(),
+          lastName: document.getElementById('lastName').value.trim(),
+          mobileNo: document.getElementById('mobileNo').value.trim(),
+          emailId: document.getElementById('emailId').value.trim(),
+          address: { street: document.getElementById('street').value.trim(), city: document.getElementById('city').value.trim(), state: document.getElementById('state').value.trim(), country: document.getElementById('country').value.trim() },
+          loginId: document.getElementById('loginId').value.trim(),
+          password: document.getElementById('password').value,
+          socketId: socket.id // send current socket id so server can join it to room
+        };
+
+        // Basic front-end validation to save quick failures
+        if (!/^\d{10}$/.test(payload.mobileNo)) return showMsg('Mobile must be 10 digits', true);
+        if (!/^[A-Za-z0-9]{8}$/.test(payload.loginId)) return showMsg('Login ID must be 8 chars', true);
+        if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\W).{6,}$/.test(payload.password)) return showMsg('Password must have 6 chars, 1 upper, 1 lower, 1 special', true);
+
+        try {
+          const res = await fetch(API + '/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Server error');
+          showMsg('Saved successfully');
+          // also ask socket to join (redundant but safe)
+          socket.emit('joinLive', { email: payload.emailId, name: payload.firstName });
+          fetchUsers(); // update list
+          document.getElementById('userForm').reset();
+        } catch (err) {
+          showMsg(err.message || 'Save failed', true);
+          console.error(err);
+        }
+      });
+
+      // Modal close
+      document.getElementById('closeModal').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
+
+      // initial fetch
+      fetchUsers();
+    }
+
+    function showMsg(txt, isErr) {
+      const el = document.getElementById('msg');
+      el.textContent = txt;
+      el.style.color = isErr ? '#b91c1c' : '#065f46';
+      setTimeout(() => el.textContent = '', 4000);
+    }
+
+    // fetch users from REST (fills server DB snapshot) and also will be updated by socket
+    async function fetchUsers() {
+      try {
+        const API = CONFIG.API_BASE_URL.replace(/\/$/, '');
+        const res = await fetch(API + '/api/users');
+        const users = await res.json();
+        // For consistent UI prefer server-side liveUsers via socket, but also render this snapshot
+        const mapped = users.map(u => ({ email: u.emailId, name: u.firstName, socketId: (u.socketId || '') }));
+        renderUsers(mapped);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById('usersContainer');
+      container.innerHTML = '';
+      users.forEach(u => {
+        const tpl = document.getElementById('userRowTpl').content.cloneNode(true);
+        tpl.querySelector('.name').textContent = u.name || '—';
+        tpl.querySelector('.email').textContent = u.email || '—';
+        tpl.querySelector('.socketId').textContent = (u.socketId || '—').slice(0, 16);
+        const row = tpl.querySelector('.userRow');
+        row.addEventListener('click', () => openUserModal(u.email));
+        container.appendChild(tpl);
+      });
+    }
+
+    async function openUserModal(email) {
+      if (!email) return;
+      try {
+        const API = CONFIG.API_BASE_URL.replace(/\/$/, '');
+        const res = await fetch(API + '/api/users/' + encodeURIComponent(email));
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.message || 'User not found');
+        }
+        const user = await res.json();
+        const body = document.getElementById('modalBody');
+        body.innerHTML = `
+          <div class="space-y-2 text-sm">
+            <div><b>Name:</b> ${user.firstName} ${user.lastName}</div>
+            <div><b>Email:</b> ${user.emailId}</div>
+            <div><b>Mobile:</b> ${user.mobileNo}</div>
+            <div><b>Login ID:</b> ${user.loginId}</div>
+            <div><b>Address:</b> ${user.address?.street || ''} ${user.address?.city || ''} ${user.address?.state || ''} ${user.address?.country || ''}</div>
+            <div><b>Created:</b> ${new Date(user.createdAt).toLocaleString()}</div>
+          </div>
+        `;
+        document.getElementById('modal').classList.remove('hidden');
+      } catch (err) {
+        alert(err.message || 'Could not load user');
+      }
+    }
+
+    // Template for user row (used in renderUsers)
+    (function addUserRowTemplate() {
+      const t = document.createElement('template');
+      t.id = 'userRowTpl';
+      t.innerHTML = `
+        <div class="userRow flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-white to-indigo-50 hover:shadow-lg transition cursor-pointer">
+          <div>
+            <div class="font-semibold name text-gray-800"></div>
+            <div class="text-sm text-gray-500 email"></div>
+          </div>
+          <div class="text-xs text-gray-400 socketId"></div>
+        </div>
+      `;
+      document.body.appendChild(t);
+    })();
+
+    // start
+    loadConfig();
+  </script>
 </body>
 </html>

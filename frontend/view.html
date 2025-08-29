@@ -1,85 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Users Data</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Live Users - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      text-align: left;
-    }
-    th {
-      background-color: #4CAF50;
-      color: white;
-    }
+    body { background: linear-gradient(135deg,#e0f7fa,#fce4ec); min-height:100vh; }
+    .card { background: rgba(255,255,255,0.9); backdrop-filter: blur(6px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
   </style>
 </head>
-<body>
-  <h2>Registered Users</h2>
-  <table id="usersTable">
-    <thead>
-      <tr>
-        <th>First Name</th>
-        <th>Last Name</th>
-        <th>Mobile</th>
-        <th>Email</th>
-        <th>Street</th>
-        <th>City</th>
-        <th>State</th>
-        <th>Country</th>
-        <th>Login ID</th>
-        <th>Creation Time</th>
-        <th>Last Updated</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Data yaha inject hoga -->
-    </tbody>
-  </table>
+<body class="flex items-center justify-center p-6">
+  <div class="w-full max-w-4xl card rounded-2xl p-6">
+    <h1 class="text-2xl font-bold mb-4">Live Users Dashboard</h1>
+    <div id="list" class="space-y-3 max-h-[60vh] overflow-auto"></div>
+  </div>
+
+  <template id="userTpl">
+    <div class="p-3 rounded-lg hover:shadow-lg transition grid grid-cols-3 gap-3 items-center">
+      <div class="col-span-2">
+        <div class="name font-semibold"></div>
+        <div class="email text-sm text-gray-600"></div>
+      </div>
+      <div class="text-right">
+        <div class="socket text-xs text-gray-500"></div>
+        <button class="viewBtn mt-2 px-3 py-1 bg-indigo-600 text-white rounded">View</button>
+      </div>
+    </div>
+  </template>
 
   <script>
-    const API_URL = "https://node-task1-agkh.onrender.com/api/users";
-    
-    async function fetchUsers() {
+    async function loadConf() {
       try {
-        const response = await fetch(API_URL);
-        const users = await response.json();
-    
-        let tableBody = document.getElementById("userTableBody");
-        tableBody.innerHTML = "";
-    
-        users.forEach((user, index) => {
-          let row = `<tr>
-            <td>${index + 1}</td>
-            <td>${user.firstName}</td>
-            <td>${user.lastName}</td>
-            <td>${user.mobile}</td>
-            <td>${user.email}</td>
-            <td>${user.city}</td>
-            <td>${user.country}</td>
-          </tr>`;
-          tableBody.innerHTML += row;
-        });
-      } catch (error) {
-        console.error("Error fetching users:", error);
+        const res = await fetch('env.json');
+        const cfg = await res.json();
+        return cfg;
+      } catch {
+        return { API_BASE_URL: window.location.hostname.includes('localhost') ? 'http://localhost:3000' : 'https://node-task1-9q5y.onrender.com' };
       }
     }
-    
-    // page load पर users fetch होंगे
-    fetchUsers();
-    </script>
-    
-    fetchUsers();
+
+    (async () => {
+      const cfg = await loadConf();
+      const API = cfg.API_BASE_URL.replace(/\/$/, '');
+      const socket = io(API, { transports: ['websocket', 'polling'] });
+
+      socket.on('connect', () => console.log('connected', socket.id));
+      socket.on('updateUsers', users => render(users));
+
+      function render(users) {
+        const list = document.getElementById('list');
+        list.innerHTML = '';
+        users.forEach(u => {
+          const tpl = document.getElementById('userTpl').content.cloneNode(true);
+          tpl.querySelector('.name').textContent = u.name;
+          tpl.querySelector('.email').textContent = u.email;
+          tpl.querySelector('.socket').textContent = u.socketId;
+          tpl.querySelector('.viewBtn').addEventListener('click', async () => {
+            try {
+              const res = await fetch(API + '/api/users/' + encodeURIComponent(u.email));
+              const data = await res.json();
+              alert(JSON.stringify(data, null, 2));
+            } catch (err) {
+              alert('Error loading user');
+            }
+          });
+          list.appendChild(tpl);
+        });
+      }
+
+      // health fallback: try to load current users snapshot via REST
+      try {
+        const r = await fetch(API + '/api/users');
+        const users = await r.json();
+        render(users.map(x=>({email:x.emailId,name:x.firstName,socketId: (x.socketId||'')})));
+      } catch {}
+    })();
   </script>
 </body>
 </html>
